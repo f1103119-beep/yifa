@@ -33,25 +33,49 @@ export default function App() {
   const [analysis, setAnalysis] = useState<Record<string, AnalysisResult>>({});
   const [newMeal, setNewMeal] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MealCategory>('breakfast');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const t = TRANSLATIONS[lang];
 
+  // Helper for unique IDs
+  const generateId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    }
+  };
+
   // Load from localStorage
   useEffect(() => {
-    const savedLogs = localStorage.getItem('nutri_logs');
-    const savedAnalysis = localStorage.getItem('nutri_analysis');
-    const savedLang = localStorage.getItem('nutri_lang');
-    
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
-    if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
-    if (savedLang) setLang(savedLang as Language);
+    try {
+      const savedLogs = localStorage.getItem('nutri_logs');
+      const savedAnalysis = localStorage.getItem('nutri_analysis');
+      const savedLang = localStorage.getItem('nutri_lang');
+      
+      if (savedLogs) {
+        const parsed = JSON.parse(savedLogs);
+        if (parsed && typeof parsed === 'object') setLogs(parsed);
+      }
+      if (savedAnalysis) {
+        const parsed = JSON.parse(savedAnalysis);
+        if (parsed && typeof parsed === 'object') setAnalysis(parsed);
+      }
+      if (savedLang) setLang(savedLang as Language);
+    } catch (e) {
+      console.error("Storage load error:", e);
+    }
   }, []);
 
   // Save to localStorage
   useEffect(() => {
-    localStorage.setItem('nutri_logs', JSON.stringify(logs));
-    localStorage.setItem('nutri_analysis', JSON.stringify(analysis));
-    localStorage.setItem('nutri_lang', lang);
+    try {
+      localStorage.setItem('nutri_logs', JSON.stringify(logs));
+      localStorage.setItem('nutri_analysis', JSON.stringify(analysis));
+      localStorage.setItem('nutri_lang', lang);
+    } catch (e) {
+      console.error("Storage save error:", e);
+    }
   }, [logs, analysis, lang]);
 
   const currentLog = useMemo(() => {
@@ -62,7 +86,7 @@ export default function App() {
     if (!newMeal.trim()) return;
 
     const meal: Meal = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       category: selectedCategory,
       content: newMeal,
       timestamp: new Date().toISOString()
@@ -91,14 +115,16 @@ export default function App() {
   const handleAnalyze = async () => {
     if (currentLog.meals.length === 0) return;
     setIsAnalyzing(true);
+    setErrorMsg(null);
     try {
       const result = await analyzeHabits(currentLog, lang);
       setAnalysis(prev => ({
         ...prev,
         [currentDate]: result
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setErrorMsg(error?.message || "Analysis failed");
     } finally {
       setIsAnalyzing(false);
     }
@@ -336,8 +362,14 @@ export default function App() {
                     <Sparkles className="w-8 h-8 text-yellow-400" />
                   </div>
                   <h2 className="text-2xl font-bold mb-4">{t.aiAnalysis}</h2>
-                  <p className="text-gray-400 text-sm mb-8 max-w-xs">{t.noData}</p>
+                  <p className="text-gray-400 text-sm mb-4 max-w-xs">{t.noData}</p>
                   
+                  {errorMsg && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs mb-6 w-full max-w-xs">
+                      {errorMsg}
+                    </div>
+                  )}
+
                   <button
                     disabled={isAnalyzing || currentLog.meals.length === 0}
                     onClick={handleAnalyze}

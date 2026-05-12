@@ -1,9 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DailyLog, AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured. Please set it in the Secrets panel.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export async function analyzeHabits(log: DailyLog, lang: 'en' | 'zh'): Promise<AnalysisResult> {
+  const ai = getAI();
   const mealSummary = log.meals.map(m => `${m.category}: ${m.content}`).join('\n');
   const prompt = `
     Analyze the following daily food and water intake:
