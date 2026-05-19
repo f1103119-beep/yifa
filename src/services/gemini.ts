@@ -16,8 +16,17 @@ export async function analyzeHabits(log: DailyLog, lang: 'en' | 'zh'): Promise<A
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to analyze habits via server");
+    let errorMessage = "Failed to analyze habits via server";
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } else {
+      const text = await response.text();
+      console.error("Server returned non-JSON error:", text);
+      errorMessage = `Server Error (${response.status}): ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();

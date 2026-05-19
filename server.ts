@@ -9,6 +9,11 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Health Check
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "Server is internal and ready" });
+  });
+
   // AI Analysis API Route
   app.post("/api/analyze", async (req, res) => {
     try {
@@ -19,6 +24,7 @@ async function startServer() {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
       }
 
+      console.log("Analyzing habits:", { planLength: plan.length, water });
       const prompt = `
         Analyze the following daily food and water intake:
         Meals:
@@ -33,36 +39,16 @@ async function startServer() {
         Language: ${lang === 'zh' ? 'Traditional Chinese' : 'English'}.
       `;
 
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
+      const genAI = new GoogleGenAI(apiKey);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              rating: { type: Type.NUMBER },
-              feedback: { type: Type.STRING },
-              suggestions: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              }
-            },
-            required: ["rating", "feedback", "suggestions"]
-          }
         }
       });
 
-      const text = response.text;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
       if (!text) throw new Error("No response from AI");
       
       const analysis = JSON.parse(text);
