@@ -11,51 +11,96 @@ async function startServer() {
 
   // Health Check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Server is internal and ready" });
+    res.json({ status: "ok", message: "Globetrotter AI Server ready" });
   });
 
-  // AI Analysis API Route
-  app.post("/api/analyze", async (req, res) => {
+  // Travel Advice API Route
+  app.post("/api/travel-advice", async (req, res) => {
     try {
-      const { plan, water, lang } = req.body;
+      const { city, country, duration, lang } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
       }
 
-      console.log("Analyzing habits:", { planLength: plan.length, water });
       const prompt = `
-        Analyze the following daily food and water intake:
-        Meals:
-        ${plan}
-        Water Intake: ${water}ml
+        You are a world-class travel guide. Provide travel advice for a trip with the following details:
+        City: ${city}
+        Country: ${country}
+        Duration: ${duration} days
 
-        Please provide:
-        1. A health rating from 1 to 10 (10 being perfect).
-        2. Detailed feedback on the choices made today.
-        3. 3-5 actionable suggestions for improvement.
+        Your advice must include:
+        1. A brief summary of why this destination is great.
+        2. A list of 3-5 famous places to visit in ${city} or ${country}, with short descriptions and a specific image search keyword (e.g. "Eiffel Tower Paris").
+        3. A list of 3-5 must-try local foods/drinks in ${city} or ${country}, with short descriptions and a specific image search keyword (e.g. "Pad Thai street food").
 
         Language: ${lang === 'zh' ? 'Traditional Chinese' : 'English'}.
+
+        Response MUST be valid JSON:
+        {
+          "summary": "string",
+          "places": [{"name": "string", "description": "string", "imageQuery": "string"}],
+          "foods": [{"name": "string", "description": "string", "imageQuery": "string"}]
+        }
       `;
 
-      const genAI = new GoogleGenAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
         }
       });
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING },
+              places: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    imageQuery: { type: Type.STRING }
+                  },
+                  required: ["name", "description", "imageQuery"]
+                }
+              },
+              foods: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    imageQuery: { type: Type.STRING }
+                  },
+                  required: ["name", "description", "imageQuery"]
+                }
+              }
+            },
+            required: ["summary", "places", "foods"]
+          }
+        }
+      });
+
+      const text = response.text;
       if (!text) throw new Error("No response from AI");
-      
-      const analysis = JSON.parse(text);
-      res.json(analysis);
+      const advice = JSON.parse(text);
+
+      res.json(advice);
     } catch (error: any) {
-      console.error("Analysis Error:", error);
-      res.status(500).json({ error: error.message || "Failed to analyze habits" });
+      console.error("Travel Advice Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get travel advice" });
     }
   });
 

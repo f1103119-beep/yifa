@@ -1,21 +1,23 @@
-export type MealCategory = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export interface TravelAdvice {
+  places: {
+    name: string;
+    description: string;
+    imageQuery: string;
+  }[];
+  foods: {
+    name: string;
+    description: string;
+    imageQuery: string;
+  }[];
+  summary: string;
+  lastUpdated: string;
+}
 
-export interface Meal {
+export interface TripSearch {
   id: string;
-  category: MealCategory;
-  content: string;
+  city: string;
+  country: string;
+  duration: number;
   timestamp: string;
-}
-
-export interface DailyLog {
-  date: string; // ISO date string (YYYY-MM-DD)
-  meals: Meal[];
-  waterIntake: number; // in ml or glasses, let's use ml
-}
-
-export interface AnalysisResult {
-  rating: number; // 1-10
-  feedback: string;
-  suggestions: string[];
-  lastAnalyzed: string; // timestamp
+  advice?: TravelAdvice;
 }

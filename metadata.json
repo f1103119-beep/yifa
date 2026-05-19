@@ -1,6 +1,6 @@
 {
-  "name": "NutriTrack",
-  "description": "A health-conscious habit tracker that analyzes your daily meals and water intake using AI to provide health ratings and personalized feedback. Supports Traditional Chinese.",
+  "name": "Hanigo",
+  "description": "Your AI travel companion. Discover famous landmarks and must-try local foods based on your destination and trip duration. Supports traditional Chinese.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

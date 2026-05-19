@@ -1,30 +1,25 @@
-import { DailyLog, AnalysisResult } from "../types";
+import { TravelAdvice } from "../types";
 
-export async function analyzeHabits(log: DailyLog, lang: 'en' | 'zh'): Promise<AnalysisResult> {
-  const mealSummary = log.meals.map(m => `${m.category}: ${m.content}`).join('\n');
-  
-  const response = await fetch("/api/analyze", {
+export async function getTravelAdvice(city: string, country: string, duration: number, lang: 'en' | 'zh'): Promise<TravelAdvice> {
+  const response = await fetch("/api/travel-advice", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      plan: mealSummary,
-      water: log.waterIntake,
+      city,
+      country,
+      duration,
       lang: lang,
     }),
   });
 
   if (!response.ok) {
-    let errorMessage = "Failed to analyze habits via server";
+    let errorMessage = "Failed to get travel advice";
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       const errorData = await response.json();
       errorMessage = errorData.error || errorMessage;
-    } else {
-      const text = await response.text();
-      console.error("Server returned non-JSON error:", text);
-      errorMessage = `Server Error (${response.status}): ${response.statusText}`;
     }
     throw new Error(errorMessage);
   }
@@ -33,6 +28,6 @@ export async function analyzeHabits(log: DailyLog, lang: 'en' | 'zh'): Promise<A
   
   return {
     ...result,
-    lastAnalyzed: new Date().toISOString()
+    lastUpdated: new Date().toISOString()
   };
 }
