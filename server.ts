@@ -95,7 +95,16 @@ async function startServer() {
 
       const text = response.text;
       if (!text) throw new Error("No response from AI");
-      const advice = JSON.parse(text);
+      
+      // Robust JSON extraction
+      let jsonStr = text.trim();
+      if (jsonStr.startsWith("```json")) {
+        jsonStr = jsonStr.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (jsonStr.startsWith("```")) {
+        jsonStr = jsonStr.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+      
+      const advice = JSON.parse(jsonStr);
 
       res.json(advice);
     } catch (error: any) {

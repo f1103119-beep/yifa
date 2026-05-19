@@ -24,6 +24,154 @@ import { TripSearch, TravelAdvice } from './types';
 import { TRANSLATIONS, Language } from './constants';
 import { getTravelAdvice } from './services/gemini';
 
+const SafeImage = ({ query, alt, type }: { query: string, alt: string, type: 'place' | 'food' }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  
+  const bgGradient = type === 'place' 
+    ? 'from-indigo-50 to-blue-50' 
+    : 'from-orange-50 to-yellow-50';
+  
+  const Icon = type === 'place' ? MapPin : UtensilsCrossed;
+  const iconColor = type === 'place' ? 'text-indigo-200' : 'text-orange-200';
+
+  return (
+    <div className={`relative h-56 w-full overflow-hidden rounded-[32px] shadow-sm border-2 border-white bg-gradient-to-br ${bgGradient} flex items-center justify-center`}>
+      {!hasError && (
+        <img 
+          src={`https://loremflickr.com/800/600/${encodeURIComponent(query.replace(/\s+/g, ','))}/all`} 
+          alt={alt}
+          onLoad={() => setIsLoading(false)}
+          onError={() => setHasError(true)}
+          className={`w-full h-full object-cover group-hover:scale-110 transition-all duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          referrerPolicy="no-referrer"
+        />
+      )}
+      
+      {(isLoading || hasError) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+          <Icon className={`${iconColor} w-12 h-12 mb-2 opacity-50`} />
+          {hasError && <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Image not found</p>}
+        </div>
+      )}
+      
+      <div className="absolute top-4 left-4 w-8 h-8 rounded-xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
+         <span className={`text-xs font-black ${type === 'place' ? 'text-indigo-600' : 'text-orange-600'}`}>
+           {alt.startsWith('Place') || alt.startsWith('Food') ? alt.split(' ')[1] : ''}
+         </span>
+      </div>
+    </div>
+  );
+};
+
+const AdviceSection = ({ advice, city, country, duration, t, onBack }: { 
+  advice: TravelAdvice, 
+  city: string, 
+  country: string, 
+  duration: number,
+  t: any,
+  onBack: () => void 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="bg-white/90 backdrop-blur-md rounded-[48px] p-10 border border-white shadow-2xl shadow-yellow-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-10 opacity-[0.03] rotate-12">
+          <Plane className="w-64 h-64" />
+        </div>
+        <div className="relative z-10">
+          <h2 className="text-xs font-black uppercase tracking-[0.4em] text-indigo-500 mb-4 bg-indigo-50 inline-block px-4 py-1.5 rounded-full">
+            {t.adviceFor}
+          </h2>
+          <h1 className="text-6xl font-black mb-3 flex items-baseline gap-3 text-gray-900 font-display tracking-tighter">
+            <MapPin className="text-red-500 w-10 h-10 self-center" /> {city}<span className="text-gray-300 font-light text-4xl">/</span><span className="text-indigo-600">{country}</span>
+          </h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-orange-400" /> {duration} {t.daysIn} {city}
+          </p>
+          <div className="mt-10 text-2xl text-gray-800 font-medium leading-relaxed max-w-3xl border-l-8 border-yellow-400 pl-8 rounded-l-sm">
+            "{advice.summary}"
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section className="bg-white/80 backdrop-blur-sm rounded-[40px] p-10 border border-white shadow-xl shadow-yellow-100/50">
+          <h3 className="text-2xl font-black mb-8 flex items-center gap-4 text-gray-900 font-display">
+            <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center">
+              <Compass className="text-indigo-600 w-6 h-6" />
+            </div>
+            {t.placesTitle}
+          </h3>
+          <div className="space-y-12">
+            {advice.places.map((place, idx) => (
+              <motion.div 
+                key={idx} 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="group flex flex-col gap-5"
+              >
+                <SafeImage query={place.imageQuery} alt={`Place ${idx + 1}`} type="place" />
+                <div className="space-y-2 px-1">
+                  <h4 className="font-black text-2xl text-gray-900 group-hover:text-indigo-600 transition-colors tracking-tight">
+                    {place.name}
+                  </h4>
+                  <p className="text-gray-500 text-base leading-relaxed font-medium">
+                    {place.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-white/80 backdrop-blur-sm rounded-[40px] p-10 border border-white shadow-xl shadow-yellow-100/50">
+          <h3 className="text-2xl font-black mb-8 flex items-center gap-4 text-gray-900 font-display">
+            <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center">
+              <UtensilsCrossed className="text-orange-600 w-6 h-6" />
+            </div>
+            {t.foodTitle}
+          </h3>
+          <div className="space-y-12">
+            {advice.foods.map((food, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="group flex flex-col gap-5"
+              >
+                <SafeImage query={food.imageQuery} alt={`Food ${idx + 1}`} type="food" />
+                <div className="space-y-2 px-1">
+                  <h4 className="font-black text-2xl text-gray-900 group-hover:text-orange-600 transition-colors tracking-tight">
+                    {food.name}
+                  </h4>
+                  <p className="text-gray-500 text-base leading-relaxed font-medium">
+                    {food.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="text-center pt-8">
+        <button 
+          onClick={onBack}
+          className="bg-white/50 backdrop-blur-sm px-8 py-4 rounded-3xl text-gray-500 hover:text-indigo-600 hover:bg-white flex items-center gap-3 mx-auto font-black text-xs uppercase tracking-[0.2em] transition-all border border-transparent hover:border-yellow-200 active:scale-95 shadow-sm"
+        >
+          <ArrowRight className="w-4 h-4 rotate-180" /> {t.newSearch}
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
 export default function App() {
   const [lang, setLang] = useState<Language>('en');
   const [history, setHistory] = useState<TripSearch[]>([]);
@@ -85,150 +233,6 @@ export default function App() {
     if (confirm('Clear travel history?')) {
       setHistory([]);
     }
-  };
-
-  const renderAdvice = (advice: TravelAdvice, city: string, country: string, duration: number) => {
-    const SafeImage = ({ query, alt, type }: { query: string, alt: string, type: 'place' | 'food' }) => {
-      const [isLoading, setIsLoading] = useState(true);
-      const [hasError, setHasError] = useState(false);
-      
-      // Use a distinct gradient based on type for the 'blank' state
-      const bgGradient = type === 'place' 
-        ? 'from-indigo-50 to-blue-50' 
-        : 'from-orange-50 to-yellow-50';
-      
-      const Icon = type === 'place' ? MapPin : UtensilsCrossed;
-      const iconColor = type === 'place' ? 'text-indigo-200' : 'text-orange-200';
-
-      return (
-        <div className={`relative h-56 w-full overflow-hidden rounded-[32px] shadow-sm border-2 border-white bg-gradient-to-br ${bgGradient} flex items-center justify-center`}>
-          {!hasError && (
-            <img 
-              src={`https://loremflickr.com/800/600/${encodeURIComponent(query.replace(/\s+/g, ','))}/all`} 
-              alt={alt}
-              onLoad={() => setIsLoading(false)}
-              onError={() => setHasError(true)}
-              className={`w-full h-full object-cover group-hover:scale-110 transition-all duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-              referrerPolicy="no-referrer"
-            />
-          )}
-          
-          {(isLoading || hasError) && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-              <Icon className={`${iconColor} w-12 h-12 mb-2 opacity-50`} />
-              {hasError && <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Image not found</p>}
-            </div>
-          )}
-          
-          <div className="absolute top-4 left-4 w-8 h-8 rounded-xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
-             <span className={`text-xs font-black ${type === 'place' ? 'text-indigo-600' : 'text-orange-600'}`}>
-               {alt.startsWith('Place') || alt.startsWith('Food') ? alt.split(' ')[1] : ''}
-             </span>
-          </div>
-        </div>
-      );
-    };
-
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-8"
-      >
-        <div className="bg-white/90 backdrop-blur-md rounded-[48px] p-10 border border-white shadow-2xl shadow-yellow-200/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-10 opacity-[0.03] rotate-12">
-            <Plane className="w-64 h-64" />
-          </div>
-          <div className="relative z-10">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-indigo-500 mb-4 bg-indigo-50 inline-block px-4 py-1.5 rounded-full">
-              {t.adviceFor}
-            </h2>
-            <h1 className="text-6xl font-black mb-3 flex items-baseline gap-3 text-gray-900 font-display tracking-tighter">
-              <MapPin className="text-red-500 w-10 h-10 self-center" /> {city}<span className="text-gray-300 font-light text-4xl">/</span><span className="text-indigo-600">{country}</span>
-            </h1>
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-sm flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-orange-400" /> {duration} {t.daysIn} {city}
-            </p>
-            <div className="mt-10 text-2xl text-gray-800 font-medium leading-relaxed max-w-3xl border-l-8 border-yellow-400 pl-8 rounded-l-sm">
-              "{advice.summary}"
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Places to Visit */}
-          <section className="bg-white/80 backdrop-blur-sm rounded-[40px] p-10 border border-white shadow-xl shadow-yellow-100/50">
-            <h3 className="text-2xl font-black mb-8 flex items-center gap-4 text-gray-900 font-display">
-              <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                <Compass className="text-indigo-600 w-6 h-6" />
-              </div>
-              {t.placesTitle}
-            </h3>
-            <div className="space-y-12">
-              {advice.places.map((place, idx) => (
-                <motion.div 
-                  key={idx} 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="group flex flex-col gap-5"
-                >
-                  <SafeImage query={place.imageQuery} alt={`Place ${idx + 1}`} type="place" />
-                  <div className="space-y-2 px-1">
-                    <h4 className="font-black text-2xl text-gray-900 group-hover:text-indigo-600 transition-colors tracking-tight">
-                      {place.name}
-                    </h4>
-                    <p className="text-gray-500 text-base leading-relaxed font-medium">
-                      {place.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-
-          {/* Must-Try Food */}
-          <section className="bg-white/80 backdrop-blur-sm rounded-[40px] p-10 border border-white shadow-xl shadow-yellow-100/50">
-            <h3 className="text-2xl font-black mb-8 flex items-center gap-4 text-gray-900 font-display">
-              <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center">
-                <UtensilsCrossed className="text-orange-600 w-6 h-6" />
-              </div>
-              {t.foodTitle}
-            </h3>
-            <div className="space-y-12">
-              {advice.foods.map((food, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="group flex flex-col gap-5"
-                >
-                  <SafeImage query={food.imageQuery} alt={`Food ${idx + 1}`} type="food" />
-                  <div className="space-y-2 px-1">
-                    <h4 className="font-black text-2xl text-gray-900 group-hover:text-orange-600 transition-colors tracking-tight">
-                      {food.name}
-                    </h4>
-                    <p className="text-gray-500 text-base leading-relaxed font-medium">
-                      {food.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="text-center pt-8">
-          <button 
-            onClick={() => setCurrentAdvice(null)}
-            className="bg-white/50 backdrop-blur-sm px-8 py-4 rounded-3xl text-gray-500 hover:text-indigo-600 hover:bg-white flex items-center gap-3 mx-auto font-black text-xs uppercase tracking-[0.2em] transition-all border border-transparent hover:border-yellow-200 active:scale-95 shadow-sm"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> {t.newSearch}
-          </button>
-        </div>
-      </motion.div>
-    );
   };
 
   return (
@@ -442,7 +446,14 @@ export default function App() {
               )}
             </motion.div>
           ) : (
-            renderAdvice(currentAdvice, targetCity, targetCountry, tripDuration)
+            <AdviceSection 
+              advice={currentAdvice} 
+              city={targetCity} 
+              country={targetCountry} 
+              duration={tripDuration} 
+              t={t}
+              onBack={() => setCurrentAdvice(null)}
+            />
           )}
         </AnimatePresence>
       </main>
